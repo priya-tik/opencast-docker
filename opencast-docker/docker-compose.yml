@@ -1,0 +1,7 @@
+services:
+  opencast:
+    image: opencast/opencast:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./files:/usr/local/bin/

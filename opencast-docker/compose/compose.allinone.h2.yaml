@@ -1,0 +1,55 @@
+# Copyright 2016 The University of Münster eLectures Team All rights reserved.
+#
+# Licensed under the Educational Community License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+#     http://opensource.org/licenses/ECL-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+volumes:
+  opensearch: {}
+  data: {}
+
+services:
+  opensearch:
+    image: opencast/opensearch:1
+    build:
+      dockerfile_inline: |
+        FROM docker.io/opensearchproject/opensearch:1
+        RUN bin/opensearch-plugin install analysis-icu
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: 'true'
+      OPENSEARCH_JAVA_OPTS: -Xms128m -Xmx512m
+      DISABLE_INSTALL_DEMO_CONFIG: 'true'
+      DISABLE_SECURITY_PLUGIN: 'true'
+    volumes:
+      - opensearch:/usr/share/opensearch/data
+
+  opencast:
+    image: quay.io/opencast/allinone:19-dev
+    environment:
+      ORG_OPENCASTPROJECT_SERVER_URL: http://localhost:8080
+      ORG_OPENCASTPROJECT_DOWNLOAD_URL: http://localhost:8080/static
+      ORG_OPENCASTPROJECT_SECURITY_ADMIN_USER: admin
+      ORG_OPENCASTPROJECT_SECURITY_ADMIN_PASS: opencast
+      ORG_OPENCASTPROJECT_SECURITY_DIGEST_USER: opencast_system_account
+      ORG_OPENCASTPROJECT_SECURITY_DIGEST_PASS: CHANGE_ME
+      ELASTICSEARCH_SERVER_HOST: opensearch
+    ports:
+      - "8080:8080"
+    volumes:
+    - data:/data
+    - ../files:/usr/local/bin/
+    - /home/priya/Desktop/opencast-docker/media/desync-presenter.mp4:/media/desync-presenter.mp4
+    - /home/priya/Desktop/opencast-docker/media/desync-presentation.mp4:/media/desync-presentation.mp4
+    - /home/priya/Desktop/opencast-docker/workflows:/etc/opencast/workflows/
+    - /home/priya/Desktop/opencast-docker/org.opencastproject.execute.impl.ExecuteServiceImpl.cfg:/etc/opencast/org.opencastproject.execute.impl.ExecuteServiceImpl.cfg
+
+
