@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<definition xmlns="http://workflow.opencastproject.org">
+    <id>sync-av-offset</id>
+    <title>priya-AV</title>
+    <description>Automatically fix AV desync in presenter/presentation videos</description>
+    <tags>
+        <tag>publish</tag>
+    </tags>
+    <displayOrder>50</displayOrder>
+    <operations>
+        <operation
+                id="defaults"
+                description="Applying default configuration values">
+            <configurations>
+                <configuration key="publish">true</configuration>
+            </configurations>
+        </operation>
+
+        <!-- Set publication variables for compatibility with the publish workflow -->
+
+        <operation
+                id="defaults"
+                if="${publish}"
+                description="Applying configuration values for publish workflow">
+            <configurations>
+                <configuration key="publishToMediaModule">true</configuration>
+                <configuration key="publishToOaiPmh">true</configuration>
+            </configurations>
+        </operation>
+
+
+        <operation
+                id="execute-once"
+                description="Inspect media and update workflow properties">
+            >
+            <configurations>
+                <configuration key="exec">/usr/local/bin/assign_flavor.py</configuration>
+                <configuration key="params">#{flavor(presenter/source)} #{flavor(presentation/source)} #{out}</configuration>
+                <configuration key="set-workflow-properties">true</configuration>
+                <configuration key="output-filename">wf.properties</configuration>
+                <configuration key="expected-type">Track</configuration>
+            </configurations>
+        </operation>
+
+        <operation
+                id="execute-once"
+                if="&apos;${sync_video}&apos; == &apos;presenter&apos;"
+                description="sync presenter video">
+            <configurations>
+                <configuration key="exec">/usr/local/bin/sync_video.py</configuration>
+                <configuration key ="params">#{flavor(presenter/source)} #{flavor(presentation/source)} #{out}</configuration>
+                <configuration key="output-filename">presenter_sync.mp4</configuration>
+                <configuration key="target-flavor">presenter/synced</configuration>
+                <configuration key="target-tags">synced, -tosync</configuration>
+                <configuration key="expected-type">track</configuration>
+            </configurations>
+
+        </operation>
+        <operation
+                id="clone"
+                if="&apos;${sync_video}&apos; == &apos;presenter&apos;"
+                exception-handler-workflow="partial-error">
+            <configurations>
+                <configuration key="source-flavor">presentation/source</configuration>
+                <configuration key="target-flavor">presentation/synced</configuration>
+            </configurations>
+        </operation>
+
+        <operation
+                id="execute-once"
+                if="&apos;${sync_video}&apos; == &apos;presentation&apos;"
+                description="sync presentation video">
+            <configurations>
+                <configuration key="exec">/usr/local/bin/sync_video.py</configuration>
+                <configuration key ="params">#{flavor(presenter/source)} #{flavor(presentation/source)} #{out}</configuration>
+                <configuration key="output-filename">presentation_sync.mp4</configuration>
+                <configuration key="target-flavor">presentation/synced</configuration>
+                <configuration key="target-tags">synced, -tosync</configuration>
+                <configuration key="expected-type">track</configuration>
+            </configurations>
+
+        </operation>
+        <operation
+                id="clone"
+                if="&apos;${sync_video}&apos; == &apos;presentation&apos;"
+                exception-handler-workflow="partial-error">
+            <configurations>
+                <configuration key="source-flavor">presenter/source</configuration>
+                <configuration key="target-flavor">presenter/synced</configuration>
+            </configurations>
+        </operation>
+
+
+        <operation id="publish-configure" exception-handler-workflow="partial-error" description="Publish to preview publication channel">
+            <configurations>
+                <configuration key="download-source-flavors">*/preview</configuration>
+                <configuration key="channel-id">internal</configuration>
+                <configuration key="url-pattern">${org_org_opencastproject_admin_ui_url!'http://localhost:8080'}/editor-ui/index.html?id=${event_id}</configuration>
+                <configuration key="check-availability">false</configuration>
+            </configurations>
+        </operation>
+
+        <operation id="publish-engage" if="${straightToPublishing}" max-attempts="2" fail-on-error="true" exception-handler-workflow="partial-error" description="Publishing to Engage">
+            <configurations>
+                <configuration key="download-source-flavors">dublincore/*,security/*,captions/*</configuration>
+                <configuration key="download-source-tags">engage-download</configuration>
+                <configuration key="check-availability">false</configuration>
+            </configurations>
+        </operation>
+
+        <operation id="snapshot" fail-on-error="true" exception-handler-workflow="partial-error" description="Archiving">
+            <configurations>
+                <configuration key="source-flavors">*/source,dublincore/*,security/*,*/synced</configuration>
+            </configurations>
+        </operation>
+
+    </operations>
+</definition>
